@@ -5,7 +5,6 @@ use dashmap::DashMap;
 use deadpool_redis::{self, Pool as RedisPool, PoolError};
 use redis::{AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
-use sqlx::{Pool, Postgres};
 
 use crate::{data::{vote::get_votes_count, voter::get_voters_data}, db::{Vote, get_all_votes, remove_vote}, util::{generate_token, log_error, log_something}};
 
@@ -21,7 +20,7 @@ struct ResetBodyResponseType {
 
 
 #[post("/admin/reset")]
-pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis_pool: web::Data<RedisPool>, postgres_pool: web::Data<Pool<Postgres>>) -> HttpResponse {
+pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis_pool: web::Data<RedisPool>) -> HttpResponse {
       // Verify the admin token from cookies
       let admin_token_cookie = req.cookie("admin_token");
       let admin_token_cookie = match admin_token_cookie {
@@ -85,7 +84,7 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
 
 
       // Get the votes data to get who this user voting
-      let db_all_votes = match get_all_votes(&postgres_pool).await {
+      let db_all_votes = match get_all_votes().await {
             Ok(data) => data,
             Err(err) => {
                   log_error("PostReset", format!("There's an error when getting all votes. Error: {}", err.to_string()).as_str());
@@ -96,10 +95,10 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
 
 
       // Reset the vote from database
-      let remove_vote_result = remove_vote(&postgres_pool, target_voter_fullname.as_str()).await;
+      let remove_vote_result = remove_vote(target_voter_fullname.clone()).await;
       match remove_vote_result {
-            Ok(res) => {
-                  log_something("PostReset", format!("Successfully remove {} vote from {}", res.rows_affected(), target_voter_fullname).as_str());
+            Ok(_) => {
+                  log_something("PostReset", format!("Successfully remove a vote from {}", target_voter_fullname).as_str());
             },
             Err(err) => {
                   log_error("PostReset", format!("Failed remove a vote from {}. Error: {}", target_voter_fullname, err.to_string()).as_str());

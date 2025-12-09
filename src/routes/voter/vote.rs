@@ -5,7 +5,6 @@ use dashmap::DashMap;
 use deadpool_redis::{self, Pool as RedisPool, PoolError};
 use redis::{AsyncCommands, RedisError};
 use serde::Deserialize;
-use sqlx::{Pool, Postgres};
 
 use crate::{
     data::{candidate::get_candidates_data, vote::get_votes_count, voter::get_voters_data},
@@ -23,7 +22,6 @@ pub async fn post(
     body: web::Json<VoteBodyRequest>,
     req: HttpRequest,
     redis_pool: web::Data<RedisPool>,
-    postgres_pool: web::Data<Pool<Postgres>>,
 ) -> HttpResponse {
     // Get the user token from request cookies
     let cookie_user_token = req.cookie("voter_token");
@@ -117,9 +115,8 @@ pub async fn post(
         return HttpResponse::BadRequest().finish();
     }
 
-    // Create vote record into the PostgreSQL
+    // Create vote record into the SurrealDB
     let vote_record = insert_vote(
-        &postgres_pool,
         target_voter_fullname.clone(),
         target_candidate_fullname.clone(),
     )

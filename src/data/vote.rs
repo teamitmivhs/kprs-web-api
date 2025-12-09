@@ -1,7 +1,6 @@
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use dashmap::DashMap;
-use sqlx::{Pool, Postgres};
 use tokio::sync::OnceCell;
 use crate::{db::{Vote, get_all_candidates, get_all_votes}, util::{log_error, log_something}};
 
@@ -9,26 +8,8 @@ pub static VOTES_COUNT: OnceCell<DashMap<String, AtomicUsize>> = OnceCell::const
 
 pub async fn get_votes_count<'a>() -> &'a DashMap<String, AtomicUsize> {
       let result: &DashMap<String, AtomicUsize> = VOTES_COUNT.get_or_init(async || {
-            // Get the database URL from environment variable
-            let database_url: String = std::env::var("DATABASE_URL")
-              .expect("DATABASE_URL must be set");
-
-            // Get the pool to the database
-            let pool: Result<Pool<Postgres>, sqlx::Error> = sqlx::postgres::PgPoolOptions::new()
-                  .max_connections(10)
-                  .connect(&database_url)
-                  .await;
-            let pool = match pool {
-                  Ok(pool_obj) => pool_obj,
-                  Err(err) => {
-                        log_error("StaticData", format!("There's an error when getting pool from postgres. Error: {}", err.to_string()).as_str());
-                        return DashMap::new();
-                  }
-            };
-
-
             // Get the votes data
-            let db_all_votes = get_all_votes(&pool).await;
+            let db_all_votes = get_all_votes().await;
             let db_all_votes: Vec<Vote> = match db_all_votes {
                   Ok(data) => data,
                   Err(err) => {
@@ -38,7 +19,7 @@ pub async fn get_votes_count<'a>() -> &'a DashMap<String, AtomicUsize> {
             };
 
             // Get the candidates data
-            let db_all_candidates = get_all_candidates(&pool).await;
+            let db_all_candidates = get_all_candidates().await;
             let db_all_candidates = match db_all_candidates {
                   Ok(data) => data,
                   Err(err) => {
