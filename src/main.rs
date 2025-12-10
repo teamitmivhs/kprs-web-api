@@ -1,4 +1,5 @@
 use actix_web::{App, HttpServer, middleware::from_fn, web};
+use actix_cors::Cors;
 use deadpool_redis::{Config as RedisConfig, Runtime as RedisRuntime};
 use kprs_web_api::{
     data::{candidate::get_candidates_data, vote::get_votes_count, voter::get_voters_data}, db::init_db, middleware::middleware, routes::{
@@ -41,6 +42,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .app_data(web::Data::new(redis_pool.clone()))
             .wrap(from_fn(middleware))
+            .wrap(Cors::permissive())
             .service(voter_get_api)
             .service(voter_vote_api)
             .service(admin_reset_api)
