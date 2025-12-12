@@ -1,9 +1,10 @@
-use std::{collections::HashMap, env, sync::atomic::AtomicUsize};
+use std::collections::HashMap;
 
 use actix_web::{HttpRequest, HttpResponse, post, web};
 use deadpool_redis::{self, Pool as RedisPool, PoolError};
 use redis::{AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
+use tokio::sync::RwLock;
 
 use crate::{data::{vote::get_votes_count, voter::get_voters_data}, db::{Vote, get_all_votes, remove_vote}, util::{generate_token, log_error, log_something}};
 
@@ -29,7 +30,7 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
             }
       };
 
-      let valid_admin_token = env::var("ADMIN_TOKEN");
+      let valid_admin_token = std::env::var("ADMIN_TOKEN");
       let valid_admin_token = match valid_admin_token {
             Ok(data) => data,
             Err(err) => {
@@ -110,13 +111,9 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
       // Reset the vote from static(?) data
       match possible_voted_candidate {
             Some(voted_candidate) => {
-                  let static_votes_data: &HashMap<String, AtomicUsize> = get_votes_count().await;
-                  match static_votes_data.get(&voted_candidate.candidate_name) {
-                        Some(vote_data) => {
-                              vote_data.fetch_sub(1, std::sync::atomic::Ordering::Relaxed);
-                        },
-                        None => ()
-                  }
+                  let static_votes_data: &RwLock<HashMap<String, String>> = get_votes_count().await;
+                  let mut locked_static_votes_data = static_votes_data.write().await;
+                  locked_static_votes_data.remove(&voted_candidate.voter_name);
             },
             None => ()
       }

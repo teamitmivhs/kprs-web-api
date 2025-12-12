@@ -1,13 +1,14 @@
-use std::{collections::HashMap, env, sync::atomic::{AtomicUsize, Ordering}};
+use std::collections::HashMap;
 
 use actix_web::{HttpRequest, HttpResponse, get};
 use serde::Serialize;
+use tokio::sync::RwLock;
 
 use crate::{data::vote::get_votes_count, util::log_error};
 
 #[derive(Serialize)]
 struct GetBodyRequestType {
-      votes_data: HashMap<String, usize>
+      votes_data: HashMap<String, String>
 }
 
 #[get("/admin/votes")]
@@ -21,7 +22,7 @@ pub async fn get(req: HttpRequest) -> HttpResponse {
             }
       };
 
-      let valid_admin_token = env::var("ADMIN_TOKEN");
+      let valid_admin_token = std::env::var("ADMIN_TOKEN");
       let valid_admin_token = match valid_admin_token {
             Ok(data) => data,
             Err(err) => {
@@ -37,11 +38,12 @@ pub async fn get(req: HttpRequest) -> HttpResponse {
 
 
       // Get the static votes data
-      let static_votes_data: &HashMap<String, AtomicUsize> = get_votes_count().await;
+      let static_votes_data: &RwLock<HashMap<String, String>> = get_votes_count().await;
+      let locked_static_votes_data = static_votes_data.read().await;
 
 
       HttpResponse::Ok()
             .json(GetBodyRequestType {
-                  votes_data: static_votes_data.iter().map(|data| (data.0.clone(), data.1.load(Ordering::Relaxed))).collect::<HashMap<String, usize>>()
+                  votes_data: locked_static_votes_data.clone()
             })
 }

@@ -31,7 +31,8 @@ pub async fn post(
         }
     };
 
-    // Verify the token from checking into the redis database
+
+    // Verify the token from checking into the Redis database
     let redis_connection_result: Result<deadpool_redis::Connection, PoolError> =
         redis_pool.get().await;
     let mut redis_connection: deadpool_redis::Connection = match redis_connection_result {
@@ -63,6 +64,7 @@ pub async fn post(
         .find(|(_, v)| v == &&cookie_user_token)
         .map(|user_data| user_data.0.clone());
 
+
     // Verify the token from checking into the redis database
     let static_voters_data = get_voters_data();
     let locked_static_voters_data = static_voters_data.read().await;
@@ -73,6 +75,7 @@ pub async fn post(
         Some(data) => Some(data.0.clone()),
         None => None,
     };
+
 
     // Verify the token using this step:
     // 1. Positive if the token is inside Redis
@@ -115,6 +118,16 @@ pub async fn post(
         return HttpResponse::BadRequest().finish();
     }
 
+    // Get the static vote
+    let static_votes_data = get_votes_count().await;
+    let mut locked_static_votes_data = static_votes_data.write().await;
+
+    // Verify that the haven't voted yet.
+    if locked_static_votes_data.contains_key(&target_voter_fullname) {
+          return HttpResponse::Conflict().finish();
+    }
+
+
     // Create vote record into the SurrealDB
     let vote_record = insert_vote(
         target_voter_fullname.clone(),
@@ -139,22 +152,10 @@ pub async fn post(
         }
     }
 
-    // Get the static vote
-    let static_votes_data = get_votes_count().await;
 
-    // Check for invalid candidate's name
-    if !static_votes_data.contains_key(&target_candidate_fullname) {
-        log_error("PostVote", "The candidate is not found");
-        return HttpResponse::BadRequest().finish();
-    }
+    // Put the vote data inside the static data  
+    locked_static_votes_data.insert(target_voter_fullname, target_candidate_fullname);
 
-    // Increment the vote data that is from hashmap
-    match static_votes_data.get(&target_candidate_fullname) {
-          Some(vote_data) => {
-            vote_data.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-          },
-          None => ()
-    }
 
     // Return OK
     HttpResponse::Ok().finish()
