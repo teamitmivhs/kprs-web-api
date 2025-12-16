@@ -40,6 +40,13 @@ pub struct Vote {
       pub candidate_name: String
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
+pub struct Admin {
+      pub admin_id: String,
+      pub admin_password: String,
+      pub admin_session_token: Option<String>
+}
+
 pub async fn handle_live_changes() {
 
       async fn voter_changes() -> Result<(), surrealdb::Error> {
@@ -140,6 +147,19 @@ pub async fn insert_vote(voter_name: String, candidate_name: String) -> surreald
 pub async fn remove_vote(voter_name: String) -> surrealdb::Result<()> {
       SURREAL_DB.query("DELETE FROM vote WHERE voter_name = $voter_name")
             .bind(("voter_name", voter_name))
+            .await?;
+
+      Ok(())
+}
+
+pub async fn get_all_admins() -> surrealdb::Result<Vec<Admin>> {
+      SURREAL_DB.select::<Vec<Admin>>("admin").await
+}
+
+pub async fn set_admin_session_token(admin_id: impl Into<String>, admin_session_token: impl Into<String>) -> surrealdb::Result<()> {
+      SURREAL_DB.query("UPDATE admin SET admin_session_token = $admin_session_token WHERE admin_id = $admin_id")
+            .bind(("admin_session_token", admin_session_token.into()))
+            .bind(("admin_id", admin_id.into()))
             .await?;
 
       Ok(())
