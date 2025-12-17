@@ -6,7 +6,7 @@ use redis::{AsyncCommands, RedisError};
 use time::{OffsetDateTime, macros::{format_description, offset}};
 use rand::Rng;
 
-use crate::{data::voter::get_voters_data, db::Voter};
+use crate::{data::{admin::get_all_admin_data, voter::get_voters_data}, db::{Admin, Voter}};
 
 static DATETIME_FMT: &[time::format_description::FormatItem<'static>] = format_description!("[hour]:[minute]:[second]");
 
@@ -132,5 +132,18 @@ pub async fn verify_voter_token(cookie_user_token: &str, redis_pool: &RedisPool)
             }
       };
 
-      return Ok(target_voter_data.clone());
+      Ok(target_voter_data.clone())
+}
+
+pub async fn verify_admin_token(admin_token: impl Into<String>) -> Result<Admin, HttpResponse> {
+      // Get the static admin token
+      let admin_token = Some(admin_token.into());
+      let static_admin_data = get_all_admin_data();
+      let locked_static_admin_data = static_admin_data.read().await;
+      let admin_data: Option<&Admin> = locked_static_admin_data.iter().find(|data| data.1.admin_session_token == admin_token).map(|data| data.1);
+
+      match admin_data {
+            Some(data) => Ok(data.clone()),
+            None => Err(HttpResponse::InternalServerError().finish())
+      }
 }

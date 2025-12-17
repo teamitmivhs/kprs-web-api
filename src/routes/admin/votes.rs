@@ -4,7 +4,7 @@ use actix_web::{HttpRequest, HttpResponse, get};
 use serde::Serialize;
 use tokio::sync::RwLock;
 
-use crate::{data::vote::get_votes_count, util::log_error};
+use crate::{data::vote::get_votes_count, util::verify_admin_token};
 
 #[derive(Serialize)]
 struct GetBodyRequestType {
@@ -13,29 +13,20 @@ struct GetBodyRequestType {
 
 #[get("/admin/votes")]
 pub async fn get(req: HttpRequest) -> HttpResponse {
-      // Verify the admin token from cookies
-      let admin_token_cookie = req.cookie("admin_token");
-      let admin_token_cookie = match admin_token_cookie {
-            Some(cookie) => cookie.value().to_string(),
-            None => {
-                  return HttpResponse::NotFound().finish();
-            }
+      // Get the admin token from request cookies
+      let cookie_admin_token = req.cookie("admin_session_token");
+      let cookie_admin_token = match cookie_admin_token {
+          Some(data) => data.value().to_string(),
+          None => {
+              return HttpResponse::Unauthorized().finish();
+          }
       };
 
-      let valid_admin_token = std::env::var("ADMIN_TOKEN");
-      let valid_admin_token = match valid_admin_token {
-            Ok(data) => data,
-            Err(err) => {
-                  log_error("PostReset", format!("There's an error when trying to get admin token from ENV. Error: {}", err.to_string()).as_str());
-                  return HttpResponse::InternalServerError().finish();
-            }
+      // Verify the admin token
+      match verify_admin_token(cookie_admin_token).await {
+            Ok(_) => (),
+            Err(response) => return response
       };
-
-
-      if admin_token_cookie != valid_admin_token {
-            return HttpResponse::Unauthorized().finish();
-      }
-
 
       // Get the static votes data
       let static_votes_data: &RwLock<HashMap<String, String>> = get_votes_count().await;

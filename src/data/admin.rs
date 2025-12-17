@@ -30,7 +30,7 @@ pub async fn update_admin_data() {
       }
 }
 
-pub async fn get_all_admin_data() -> Arc<RwLock<HashMap<String, Admin>>> {
+pub fn get_all_admin_data() -> Arc<RwLock<HashMap<String, Admin>>> {
       return ADMIN_DATA.clone()
 }
 
