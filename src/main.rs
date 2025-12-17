@@ -40,8 +40,6 @@ async fn main() -> std::io::Result<()> {
         .create_pool(Some(RedisRuntime::Tokio1))
         .unwrap();
 
-    // Setup WebSocker
-
     // Setup HTTP Server
     log_something("Setup", "Starting...");
     HttpServer::new(move || {

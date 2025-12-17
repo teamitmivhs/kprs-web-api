@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{HttpRequest, HttpResponse, get};
 use serde::Serialize;
@@ -29,7 +29,7 @@ pub async fn get(req: HttpRequest) -> HttpResponse {
       };
 
       // Get the static votes data
-      let static_votes_data: &RwLock<HashMap<String, String>> = get_votes_count().await;
+      let static_votes_data: Arc<RwLock<HashMap<String, String>>> = get_votes_count();
       let locked_static_votes_data = static_votes_data.read().await;
 
 

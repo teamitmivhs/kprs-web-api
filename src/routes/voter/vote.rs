@@ -65,7 +65,7 @@ pub async fn post(
     }
 
     // Get the static vote
-    let static_votes_data = get_votes_count().await;
+    let static_votes_data = get_votes_count();
     let mut locked_static_votes_data = static_votes_data.write().await;
 
     // Verify that the haven't voted yet.

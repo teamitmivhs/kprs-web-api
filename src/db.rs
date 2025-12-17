@@ -10,6 +10,7 @@ use futures::StreamExt;
 
 use crate::data::admin::update_admin_data;
 use crate::data::live_clients::get_live_clients;
+use crate::data::vote::update_votes_data;
 use crate::data::voter::update_voters_data;
 use crate::util::{log_error, log_something};
 
@@ -99,6 +100,7 @@ pub async fn handle_live_changes() {
             'notification_loop: while let Some(result) = live.next().await {
                   match result {
                         Ok(notification) => {
+                              update_votes_data().await;
                               let live_clients = get_live_clients();
                               let mut locked_write_live_clients = live_clients.write().await;
 

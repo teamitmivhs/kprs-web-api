@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{HttpRequest, HttpResponse, post, web};
 use deadpool_redis::{self, Pool as RedisPool, PoolError};
@@ -111,7 +111,7 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
       // Reset the vote from static(?) data
       match possible_voted_candidate {
             Some(voted_candidate) => {
-                  let static_votes_data: &RwLock<HashMap<String, String>> = get_votes_count().await;
+                  let static_votes_data: Arc<RwLock<HashMap<String, String>>> = get_votes_count();
                   let mut locked_static_votes_data = static_votes_data.write().await;
                   locked_static_votes_data.remove(&voted_candidate.voter_name);
             },
