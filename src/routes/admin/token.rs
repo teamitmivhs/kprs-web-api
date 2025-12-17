@@ -1,4 +1,4 @@
-use std::{collections::HashMap, env, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use actix_web::{HttpRequest, HttpResponse, get, web::{self, Json}};
 use deadpool_redis::{Connection as RedisConnection, Pool as RedisPool, PoolError};
 use redis::AsyncCommands;
@@ -16,26 +16,7 @@ struct GetTokenResponseType {
 #[get("/admin/token")]
 pub async fn get(req: HttpRequest, redis_pool: web::Data<RedisPool>) -> HttpResponse {
       // Verify the admin token from cookie
-      let admin_token_cookie = req.cookie("admin_token");
-      let admin_token_cookie = match admin_token_cookie {
-            Some(cookie) => cookie.value().to_string(),
-            None => {
-                  return HttpResponse::NotFound().finish();
-            }
-      };
 
-      let valid_admin_token = env::var("ADMIN_TOKEN");
-      let valid_admin_token = match valid_admin_token {
-            Ok(data) => data,
-            Err(err) => {
-                  log_error("PostReset", format!("There's an error when trying to get admin token from ENV. Error: {}", err.to_string()).as_str());
-                  return HttpResponse::InternalServerError().finish();
-            }
-      };
-
-      if admin_token_cookie != valid_admin_token {
-            return HttpResponse::Unauthorized().finish();
-      }
 
 
       // Get the token data from Redis

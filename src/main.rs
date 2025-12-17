@@ -7,7 +7,7 @@ use kprs_web_api::{
     middleware::middleware,
     routes::{
         admin::{admin_check_api, admin_login_api, admin_reset_api, admin_token_api, admin_votes_api},
-        voter::{voter_check_api, voter_get_api, voter_logout_api, voter_vote_api},
+        voter::{voter_check_api, voter_get_api, voter_logout_api, voter_vote_api}, ws::live_votes_data,
     },
     util::log_something
 };
@@ -67,6 +67,7 @@ async fn main() -> std::io::Result<()> {
             .service(admin_check_api)
 
             // WebSocket live connectio
+            .service(live_votes_data)
     })
     .bind(("127.0.0.1", 8080))?
     .run()

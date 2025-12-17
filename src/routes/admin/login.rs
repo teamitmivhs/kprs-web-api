@@ -20,7 +20,7 @@ pub async fn post(data: web::Json<AdminLoginData>) -> HttpResponse {
       let data = data.into_inner();
 
       // Get static admin data
-      let static_admin_data = get_all_admin_data().await;
+      let static_admin_data = get_all_admin_data();
       {
             // Read static admin data
             let locked_static_admin_data = static_admin_data.read().await;
@@ -54,16 +54,7 @@ pub async fn post(data: web::Json<AdminLoginData>) -> HttpResponse {
             });
       }
 
-
-
-
-      let admin_session_token_cookie = Cookie::build("admin_session_token", admin_session_token.as_str())
-            .path("/")
-            .secure(true)
-            .http_only(true)
-            .max_age(Duration::days(2))
-            .finish();
-
+      // Update from database
       match set_admin_session_token(data.admin_id.as_str(), admin_session_token.as_str()).await {
             Ok(_) => (),
             Err(err) => {
@@ -71,6 +62,13 @@ pub async fn post(data: web::Json<AdminLoginData>) -> HttpResponse {
             }
       }
 
+      // Create admin session token cookie
+      let admin_session_token_cookie = Cookie::build("admin_session_token", admin_session_token.as_str())
+            .path("/")
+            .secure(true)
+            .http_only(true)
+            .max_age(Duration::days(2))
+            .finish();
 
       HttpResponse::Ok().cookie(admin_session_token_cookie).finish()
 }
