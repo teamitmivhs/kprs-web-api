@@ -1,15 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
 use actix_web::{HttpRequest, HttpResponse, get};
-use serde::Serialize;
 use tokio::sync::RwLock;
 
 use crate::{data::vote::get_votes_count, util::verify_admin_token};
 
-#[derive(Serialize)]
-struct GetBodyRequestType {
-      votes_data: HashMap<String, String>
-}
 
 #[get("/admin/votes")]
 pub async fn get(req: HttpRequest) -> HttpResponse {
@@ -34,7 +29,5 @@ pub async fn get(req: HttpRequest) -> HttpResponse {
 
 
       HttpResponse::Ok()
-            .json(GetBodyRequestType {
-                  votes_data: locked_static_votes_data.clone()
-            })
+            .json(locked_static_votes_data.clone())
 }
