@@ -6,7 +6,7 @@ use redis::{AsyncCommands, RedisError};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
-use crate::{data::{vote::get_votes_count, voter::get_voters_data}, db::{Vote, get_all_votes, remove_vote}, util::{generate_token, log_error, log_something}};
+use crate::{data::{vote::get_votes_count, voter::get_voters_data}, db::{Campus, Vote, get_all_votes, remove_vote}, util::{generate_token, log_error, log_something}};
 
 #[derive(Deserialize)]
 struct ResetBodyRequestType {
@@ -85,7 +85,7 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
 
 
       // Get the votes data to get who this user voting
-      let db_all_votes = match get_all_votes().await {
+      let db_all_votes = match get_all_votes(None).await {
             Ok(data) => data,
             Err(err) => {
                   log_error("PostReset", format!("There's an error when getting all votes. Error: {}", err.to_string()).as_str());
@@ -111,7 +111,16 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
       // Reset the vote from static(?) data
       match possible_voted_candidate {
             Some(voted_candidate) => {
-                  let static_votes_data: Arc<RwLock<HashMap<String, String>>> = get_votes_count();
+                  let static_votes_data: Arc<HashMap<Campus, RwLock<HashMap<String, String>>>> = get_votes_count();
+                  let static_votes_data: Option<&RwLock<HashMap<String, String>>> = static_votes_data.get(&voted_candidate.campus);
+                  let static_votes_data: &RwLock<HashMap<String, String>> = match static_votes_data {
+                        Some(data) => data,
+                        None => {
+                              log_error("PostVote", "The static votes count hasn't initialized yet.");
+                              return HttpResponse::InternalServerError().finish();
+                        }
+                  };
+
                   let mut locked_static_votes_data = static_votes_data.write().await;
                   locked_static_votes_data.remove(&voted_candidate.voter_name);
             },

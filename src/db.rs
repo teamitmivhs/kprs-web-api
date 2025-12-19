@@ -1,6 +1,7 @@
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
+use strum_macros::EnumIter;
 use surrealdb::Surreal;
 use surrealdb::engine::remote::ws::{Client, Ws};
 use surrealdb::method::Stream;
@@ -17,7 +18,7 @@ use crate::util::{log_error, log_something};
 
 static SURREAL_DB: LazyLock<Surreal<Client>> = LazyLock::new(Surreal::init);
 
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, EnumIter, PartialEq, Eq, Hash)]
 pub enum Campus {
       MM,
       PD
@@ -40,7 +41,8 @@ pub struct Candidate {
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Vote {
       pub voter_name: String,
-      pub candidate_name: String
+      pub candidate_name: String,
+      pub campus: Campus
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
@@ -206,16 +208,23 @@ pub async fn get_all_candidates() -> surrealdb::Result<Vec<Candidate>> {
 
 
 
-pub async fn get_all_votes() -> surrealdb::Result<Vec<Vote>> {
-      SURREAL_DB.select::<Vec<Vote>>("vote").await
+pub async fn get_all_votes(campus: Option<Campus>) -> surrealdb::Result<Vec<Vote>> {
+      match campus {
+            Some(campus) => SURREAL_DB.query("SELECT * FROM vote WHERE campus = $campus")
+                  .bind(("campus", campus))
+                  .await?
+                  .take::<Vec<Vote>>(0),
+            None => SURREAL_DB.select::<Vec<Vote>>("vote").await
+      }
 }
 
-pub async fn insert_vote(voter_name: String, candidate_name: String) -> surrealdb::Result<()> {
+pub async fn insert_vote(voter_name: String, candidate_name: String, campus: Campus) -> surrealdb::Result<()> {
       SURREAL_DB.insert::<Vec<Vote>>("vote")
             .content(vec![
                   Vote {
                         voter_name: voter_name,
-                        candidate_name: candidate_name
+                        candidate_name: candidate_name,
+                        campus: campus
                   }
             ])
             .await?;

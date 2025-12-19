@@ -1,10 +1,13 @@
+use std::{collections::HashMap, sync::Arc};
+
 use actix_web::{HttpRequest, HttpResponse, post, web};
 use deadpool_redis::{self, Pool as RedisPool};
 use serde::Deserialize;
+use tokio::sync::RwLock;
 
 use crate::{
     data::{candidate::get_candidates_data, vote::get_votes_count},
-    db::{Voter, insert_vote},
+    db::{Campus, Voter, insert_vote},
     util::{log_error, log_something, verify_voter_token},
 };
 
@@ -65,7 +68,16 @@ pub async fn post(
     }
 
     // Get the static vote
-    let static_votes_data = get_votes_count();
+    let static_votes_data: Arc<HashMap<Campus, RwLock<HashMap<String, String>>>> = get_votes_count();
+    let static_votes_data: Option<&RwLock<HashMap<String, String>>> = static_votes_data.get(&target_candidate_data.campus);
+    let static_votes_data: &RwLock<HashMap<String, String>> = match static_votes_data {
+          Some(data) => data,
+          None => {
+                log_error("PostVote", "The static votes count hasn't initialized yet.");
+                return HttpResponse::InternalServerError().finish();
+          }
+    };
+
     let mut locked_static_votes_data = static_votes_data.write().await;
 
     // Verify that the haven't voted yet.
@@ -78,6 +90,7 @@ pub async fn post(
     let vote_record = insert_vote(
         target_voter_fullname.clone(),
         target_candidate_fullname.clone(),
+        target_candidate_data.campus
     )
     .await;
 

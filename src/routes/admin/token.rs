@@ -2,16 +2,10 @@ use std::{collections::HashMap, sync::Arc};
 use actix_web::{HttpRequest, HttpResponse, get, web::{self, Json}};
 use deadpool_redis::{Connection as RedisConnection, Pool as RedisPool, PoolError};
 use redis::AsyncCommands;
-use serde::Serialize;
 use tokio::sync::RwLock;
 
 use crate::{data::voter::get_voters_data, db::Voter, util::{log_error, verify_admin_token}};
 
-#[derive(Serialize)]
-struct GetTokenResponseType {
-      changed_voter_tokens: HashMap<String, String>,
-      static_voter_data: HashMap<String, Voter>
-}
 
 #[get("/admin/token")]
 pub async fn get(req: HttpRequest, redis_pool: web::Data<RedisPool>) -> HttpResponse {
@@ -36,7 +30,7 @@ pub async fn get(req: HttpRequest, redis_pool: web::Data<RedisPool>) -> HttpResp
       let mut redis_connection: RedisConnection = match redis_connection_result {
             Ok(connection) => connection,
             Err(err) => {
-                  log_error("PostReset", format!("There's an error when trying to get admin redis pool. Error: {}", err.to_string()).as_str());
+                  log_error("PostReset", format!("There's an error when trying to get redis pool. Error: {}", err.to_string()).as_str());
                   return HttpResponse::InternalServerError().finish();
             }
       };
@@ -57,11 +51,31 @@ pub async fn get(req: HttpRequest, redis_pool: web::Data<RedisPool>) -> HttpResp
       let locked_static_voter_tokens = static_voter_tokens.read().await.clone();
 
 
+      // Map all of the result into a single variable
+      let mut result_voters_token: HashMap<String, Voter> = HashMap::new();
+      for static_voter_token in locked_static_voter_tokens.iter() {
+            result_voters_token.insert(static_voter_token.0.clone(), static_voter_token.1.clone());
+      }
+      for dynamic_voter_token in redis_voter_tokens.iter() {
+            let voter_token = result_voters_token.get_mut(dynamic_voter_token.0);
+            let voter_token = match voter_token {
+                  Some(data) => data,
+                  None => {
+                        log_error("GetToken", "There's a vote data where the campus is not in the enum!");
+                        continue;
+                  }
+            };
+            *voter_token = Voter {
+                  campus: voter_token.campus,
+                  class: voter_token.class.clone(),
+                  name: dynamic_voter_token.0.clone(),
+                  token: dynamic_voter_token.1.clone()
+            };
+      }
+
+
       // Return the token data
       let mut response = HttpResponse::Ok();
 
-      response.json(Json(GetTokenResponseType {
-            changed_voter_tokens: redis_voter_tokens,
-            static_voter_data: locked_static_voter_tokens
-      }))
+      response.json(Json(result_voters_token))
 }
