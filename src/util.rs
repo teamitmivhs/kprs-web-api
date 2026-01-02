@@ -57,7 +57,9 @@ pub fn generate_token() -> String {
       result
 }
 
-pub async fn verify_voter_token(cookie_user_token: &str, redis_pool: &RedisPool) -> Result<Voter, HttpResponse> {
+pub async fn verify_voter_token<T: AsRef<str>>(target_user_token: T, redis_pool: &RedisPool) -> Result<Voter, HttpResponse> {
+      let target_user_token: &str = target_user_token.as_ref();
+
       let redis_connection_result: Result<deadpool_redis::Connection, PoolError> =
           redis_pool.get().await;
       let mut redis_connection: deadpool_redis::Connection = match redis_connection_result {
@@ -86,7 +88,7 @@ pub async fn verify_voter_token(cookie_user_token: &str, redis_pool: &RedisPool)
       };
       let redis_user_name_by_cookie_token: Option<String> = redis_user_tokens
           .iter()
-          .find(|(_, v)| v == &&cookie_user_token)
+          .find(|(_, v)| v.as_str() == target_user_token)
           .map(|user_data| user_data.0.clone());
 
 
@@ -95,7 +97,7 @@ pub async fn verify_voter_token(cookie_user_token: &str, redis_pool: &RedisPool)
       let locked_static_voters_data = static_voters_data.read().await;
       let static_voter_data_maybe = locked_static_voters_data
           .iter()
-          .find(|data| data.1.token == cookie_user_token);
+          .find(|data| data.1.token == target_user_token);
       let static_voter_name: Option<String> = match static_voter_data_maybe {
           Some(data) => Some(data.0.clone()),
           None => None,
@@ -135,12 +137,21 @@ pub async fn verify_voter_token(cookie_user_token: &str, redis_pool: &RedisPool)
       Ok(target_voter_data.clone())
 }
 
-pub async fn verify_admin_token(admin_token: impl Into<String>) -> Result<Admin, HttpResponse> {
+pub async fn verify_admin_token<T: AsRef<str>>(target_admin_token: T) -> Result<Admin, HttpResponse> {
       // Get the static admin token
-      let admin_token = Some(admin_token.into());
+      let target_admin_token: &str = target_admin_token.as_ref();
       let static_admin_data = get_all_admin_data();
       let locked_static_admin_data = static_admin_data.read().await;
-      let admin_data: Option<&Admin> = locked_static_admin_data.iter().find(|data| data.1.admin_session_token == admin_token).map(|data| data.1);
+      let admin_data: Option<&Admin> = locked_static_admin_data.iter().find(|data| {
+            match &data.1.admin_session_token {
+                  Some(token) => {
+                        token.as_str() == target_admin_token
+                  },
+                  None => {
+                        return false;
+                  }
+            }
+      }).map(|data| data.1);
 
       match admin_data {
             Some(data) => Ok(data.clone()),

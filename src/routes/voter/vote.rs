@@ -47,7 +47,7 @@ pub async fn post(
 
     // Verify candidate name
     let candidates_data = get_candidates_data().await;
-    let target_candidate_data = candidates_data.iter().find(|data| data.name == target_candidate_fullname);
+    let target_candidate_data = candidates_data.iter().find(|data| data.president == target_candidate_fullname);
     let target_candidate_data = match target_candidate_data {
           Some(data) => data,
           None => {

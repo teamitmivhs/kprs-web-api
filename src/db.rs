@@ -46,8 +46,11 @@ pub struct Voter {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct Candidate {
-    pub name: String,
+    pub president: String,
+    pub vice_president: String,
     pub campus: Campus,
+    pub vision: String,
+    pub misions: Vec<String>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]

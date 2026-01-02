@@ -7,14 +7,14 @@ pub async fn post(req: HttpRequest) -> HttpResponse {
       // Get the admin token from request cookies
       let cookie_admin_token = req.cookie("admin_session_token");
       let cookie_admin_token = match cookie_admin_token {
-          Some(data) => data.value().to_string(),
+          Some(data) => data.to_string(),
           None => {
               return HttpResponse::Unauthorized().finish();
           }
       };
 
       // Check the admin token
-      match verify_admin_token(cookie_admin_token).await {
+      match verify_admin_token(cookie_admin_token.as_str()).await {
             Ok(_) => HttpResponse::Ok().finish(),
             Err(response) => response
       }

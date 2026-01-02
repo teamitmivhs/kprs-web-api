@@ -7,7 +7,9 @@ use kprs_web_api::{
     middleware::middleware,
     routes::{
         admin::{admin_check_api, admin_login_api, admin_reset_api, admin_token_api, admin_votes_api, admin_votes_simple_api},
-        voter::{voter_check_api, voter_get_api, voter_logout_api, voter_vote_api}, ws::live_votes_data,
+        candidate::candidate_get_api,
+        voter::{voter_check_api, voter_get_api, voter_logout_api, voter_vote_api},
+        ws::live_votes_data
     },
     util::log_something
 };
@@ -50,6 +52,9 @@ async fn main() -> std::io::Result<()> {
             // Middleware
             .wrap(from_fn(middleware))
             .wrap(Cors::permissive())
+
+            // General related API
+            .service(candidate_get_api)
 
             // Voter related API
             .service(voter_get_api)

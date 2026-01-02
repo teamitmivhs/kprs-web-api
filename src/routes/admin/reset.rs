@@ -29,7 +29,7 @@ pub async fn post(body: web::Json<ResetBodyRequestType>, req: HttpRequest, redis
             }
       };
 
-      let admin_data = verify_admin_token(admin_token_cookie).await;
+      let admin_data = verify_admin_token(admin_token_cookie.as_str()).await;
       match admin_data {
             Ok(data) => data,
             Err(err) => {

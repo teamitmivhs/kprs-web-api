@@ -18,7 +18,7 @@ pub async fn post(req: HttpRequest) -> HttpResponse {
       };
 
       // Verify the admin token
-      match verify_admin_token(cookie_admin_token).await {
+      match verify_admin_token(cookie_admin_token.as_str()).await {
             Ok(_) => (),
             Err(response) => return response
       };
